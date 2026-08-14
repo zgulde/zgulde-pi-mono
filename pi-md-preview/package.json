@@ -1,0 +1,23 @@
+{
+  "name": "pi-md-preview",
+  "version": "0.1.0",
+  "description": "Open the latest pi assistant response as rendered Markdown in the browser",
+  "type": "module",
+  "license": "MIT",
+  "keywords": ["pi-package"],
+  "dependencies": {
+    "marked": "^15.0.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": ["./index.ts"]
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
