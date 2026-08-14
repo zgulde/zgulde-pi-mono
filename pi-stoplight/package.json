@@ -3,15 +3,11 @@
   "version": "0.1.0",
   "description": "A three-state tool access control extension for pi",
   "type": "module",
+  "license": "MIT",
   "keywords": [
     "pi-package",
     "pi-extension",
     "access-control"
-  ],
-  "files": [
-    "src",
-    "Makefile",
-    "README.md"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -20,19 +16,15 @@
   },
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./index.ts"
     ]
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "0.80.2",
     "@types/node": "^22.18.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
-  },
-  "engines": {
-    "node": ">=20"
   }
 }

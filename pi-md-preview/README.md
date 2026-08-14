@@ -5,10 +5,16 @@ Markdown in the system browser.
 
 ## Install
 
-From this directory:
+From the monorepo root:
 
 ```bash
-npm install
+make install
+```
+
+or, if already installed:
+
+```bash
+pi install ./pi-md-preview
 ```
 
 For a local extension, either pass it directly:

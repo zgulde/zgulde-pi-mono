@@ -10,12 +10,21 @@ Press `Shift+Tab` to cycle modes.
 
 ## Install
 
-```sh
+From the monorepo root:
+
+```bash
 make install
 ```
 
-## Check
+or, if already installed:
 
-```sh
+```bash
+pi install ./pi-stoplight
+```
+
+## Development
+
+```bash
+npm install
 npm run check
 ```

@@ -4,7 +4,7 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import stoplightExtension from "../src/index.ts";
+import stoplightExtension from "../index.ts";
 import {
 	DEFAULT_MODE,
 	getActiveToolsForMode,

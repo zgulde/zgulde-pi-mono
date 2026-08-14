@@ -2,17 +2,19 @@
   "name": "pi-tok-per-sec",
   "version": "1.0.0",
   "description": "Display the most recent pi response's output tokens per second in the status line.",
-  "keywords": [
-    "pi-package"
-  ],
-  "license": "MIT",
   "type": "module",
-  "pi": {
-    "extensions": [
-      "./extensions"
-    ]
+  "license": "MIT",
+  "keywords": ["pi-package"],
+  "devDependencies": {
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": ["./index.ts"]
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
   }
 }

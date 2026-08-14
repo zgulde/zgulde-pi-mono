@@ -12,7 +12,7 @@ import {
 	nextMode,
 	shouldBlockToolCall,
 	type StoplightMode,
-} from "./stoplight.ts";
+} from "./src/stoplight.ts";
 
 const STATE_ENTRY_TYPE = "pi-stoplight-state";
 const MESSAGE_TYPE = "pi-stoplight";

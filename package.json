@@ -1,0 +1,15 @@
+{
+  "name": "zgulde-pi-mono",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Monorepo of pi extensions (pi-md-preview, pi-stoplight, pi-tok-per-sec)",
+  "workspaces": [
+    "pi-*"
+  ],
+  "scripts": {
+    "install:pi": "pi install ./pi-md-preview && pi install ./pi-stoplight && pi install ./pi-tok-per-sec",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test --workspaces --if-present"
+  }
+}
