@@ -5,7 +5,7 @@ A pi extension that controls agent tools with three modes:
 - 🟢 Green: all tools enabled
 - 🟡 Yellow: `edit`, `write`, and `bash` disabled
 - 🔴 Red: no tools enabled
-- `/stoplight` command cycles modes (pi-web friendly)
+- `/stoplight` command opens a picker to choose the mode (pi-web friendly)
 
 Press `Shift+Tab` to cycle modes — web users can use `/stoplight` instead.
 

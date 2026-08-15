@@ -11,6 +11,7 @@ import {
 	MODE_DEFINITIONS,
 	nextMode,
 	shouldBlockToolCall,
+	STOPLIGHT_MODES,
 	type StoplightMode,
 } from "./src/stoplight.ts";
 
@@ -94,9 +95,16 @@ export default function stoplightExtension(pi: ExtensionAPI): void {
 	});
 
 	pi.registerCommand("stoplight", {
-		description: "Cycle the stoplight mode (green → yellow → red)",
+		description: "Choose the stoplight mode",
 		handler: async (_args, ctx) => {
-			setMode(nextMode(mode), ctx, { announce: true, persist: true });
+			const labels = STOPLIGHT_MODES.map((m) => MODE_DEFINITIONS[m].statusText);
+			const picked = await ctx.ui.select("Stoplight mode", labels);
+			if (!picked) return;
+			const next = STOPLIGHT_MODES.find(
+				(m) => MODE_DEFINITIONS[m].statusText === picked,
+			);
+			if (!next) return;
+			setMode(next, ctx, { announce: true, persist: true });
 		},
 	});
 

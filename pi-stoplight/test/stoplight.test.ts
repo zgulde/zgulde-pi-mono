@@ -51,10 +51,12 @@ function createHarness(
 	const sentMessages: SentMessage[] = [];
 	const activeToolUpdates: string[][] = [];
 	const statuses: Array<{ key: string; text: string | undefined }> = [];
+	const selectCalls: Array<{ title: string; options: string[] }> = [];
 	let branch = options.branch ?? [];
 	let tools = options.tools ?? ["read", "bash", "edit", "write", "custom_tool"];
 	let shortcutHandler: ShortcutHandler | undefined;
 	let commandHandler: CommandHandler | undefined;
+	let selectResolver: ((value: string | undefined) => void) | null = null;
 
 	const pi = {
 		appendEntry(customType: string, data: unknown) {
@@ -88,6 +90,12 @@ function createHarness(
 			getBranch: () => branch,
 		},
 		ui: {
+			select(title: string, options: string[]) {
+				selectCalls.push({ title, options: [...options] });
+				return new Promise<string | undefined>((resolve) => {
+					selectResolver = resolve;
+				});
+			},
 			setStatus(key: string, text: string | undefined) {
 				statuses.push({ key, text });
 			},
@@ -123,13 +131,22 @@ function createHarness(
 		return commandHandler(undefined, ctx);
 	}
 
+	function resolveSelect(value: string | undefined) {
+		assert.ok(selectResolver, "No pending select call to resolve");
+		const resolve = selectResolver;
+		selectResolver = null;
+		resolve(value);
+	}
+
 	return {
 		activeToolUpdates,
 		appendedEntries,
 		ctx,
 		emit,
 		pressShortcut,
+		resolveSelect,
 		runCommand,
+		selectCalls,
 		sentMessages,
 		setBranch(nextBranch: BranchEntry[]) {
 			branch = nextBranch;
@@ -288,11 +305,25 @@ describe("stoplight extension", () => {
 		assert.deepEqual(harness.sentMessages, []);
 	});
 
-	it("cycles and persists via the /stoplight command", async () => {
+	it("opens a picker and applies the chosen mode", async () => {
 		const harness = createHarness();
 		await harness.emit("session_start");
 
-		await harness.runCommand();
+		// Command handler runs synchronously up to its first await (select()),
+		// so the picker call is already recorded by the time runCommand returns.
+		const commandPromise = harness.runCommand();
+
+		assert.equal(harness.selectCalls.length, 1);
+		assert.equal(harness.selectCalls[0]?.title, "Stoplight mode");
+		assert.deepEqual(harness.selectCalls[0]?.options, [
+			"🟢 Green: all tools",
+			"🟡 Yellow: read only",
+			"🔴 Red: no tools",
+		]);
+
+		// Simulate the user picking yellow.
+		await harness.resolveSelect("🟡 Yellow: read only");
+		await commandPromise;
 
 		assert.deepEqual(harness.activeToolUpdates.at(-1), [
 			"read",
@@ -303,6 +334,25 @@ describe("stoplight extension", () => {
 			customType: "pi-stoplight-state",
 			data: { mode: "yellow" },
 		});
+	});
+
+	it("does not change mode when the picker is cancelled", async () => {
+		const harness = createHarness();
+		await harness.emit("session_start");
+
+		const initialTools = harness.activeToolUpdates.at(-1);
+		const initialStatusCount = harness.statuses.length;
+		const initialEntryCount = harness.appendedEntries.length;
+
+		const commandPromise = harness.runCommand();
+		await harness.resolveSelect(undefined);
+		await commandPromise;
+
+		// Nothing should have changed: cancel must not touch tools, status, or
+		// persistence.
+		assert.deepEqual(harness.activeToolUpdates.at(-1), initialTools);
+		assert.equal(harness.statuses.length, initialStatusCount);
+		assert.equal(harness.appendedEntries.length, initialEntryCount);
 	});
 
 	it("reports the mode before queued changes and the final mode", async () => {

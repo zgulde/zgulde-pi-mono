@@ -1,4 +1,4 @@
-const STOPLIGHT_MODES = ["green", "yellow", "red"] as const;
+export const STOPLIGHT_MODES = ["green", "yellow", "red"] as const;
 
 export type StoplightMode = (typeof STOPLIGHT_MODES)[number];
 
