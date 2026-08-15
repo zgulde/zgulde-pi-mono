@@ -128,8 +128,8 @@ function createHarness(
 }
 
 describe("stoplight policy", () => {
-	it("defaults to yellow and cycles in traffic-light order", () => {
-		assert.equal(DEFAULT_MODE, "yellow");
+	it("defaults to green and cycles in traffic-light order", () => {
+		assert.equal(DEFAULT_MODE, "green");
 		assert.equal(nextMode("green"), "yellow");
 		assert.equal(nextMode("yellow"), "red");
 		assert.equal(nextMode("red"), "green");
@@ -150,17 +150,24 @@ describe("stoplight policy", () => {
 		);
 	});
 
-	it("disables only edit, write, and bash in yellow", () => {
+	it("disables edit, write, bash, and subagent in yellow", () => {
 		assert.deepEqual(
 			getActiveToolsForMode("yellow", [
 				"read",
 				"edit",
 				"write",
 				"bash",
+				"subagent",
 				"custom",
 			]),
 			["read", "custom"],
 		);
+	});
+
+	it("blocks subagent in yellow mode", () => {
+		assert.equal(shouldBlockToolCall("green", "subagent"), false);
+		assert.equal(shouldBlockToolCall("yellow", "subagent"), true);
+		assert.equal(shouldBlockToolCall("red", "subagent"), true);
 	});
 
 	it("disables every tool in red", () => {
@@ -184,13 +191,19 @@ describe("stoplight policy", () => {
 });
 
 describe("stoplight extension", () => {
-	it("starts new sessions in yellow without announcing a transition", async () => {
+	it("starts new sessions in green without announcing a transition", async () => {
 		const harness = createHarness();
 
 		await harness.emit("session_start");
 
-		assert.deepEqual(harness.activeToolUpdates.at(-1), ["read", "custom_tool"]);
-		assert.match(harness.statuses.at(-1)?.text ?? "", /Yellow/);
+		assert.deepEqual(harness.activeToolUpdates.at(-1), [
+			"read",
+			"bash",
+			"edit",
+			"write",
+			"custom_tool",
+		]);
+		assert.match(harness.statuses.at(-1)?.text ?? "", /Green/);
 		assert.deepEqual(harness.appendedEntries, []);
 		assert.deepEqual(harness.sentMessages, []);
 	});
@@ -250,10 +263,10 @@ describe("stoplight extension", () => {
 
 		await harness.pressShortcut();
 
-		assert.deepEqual(harness.activeToolUpdates.at(-1), []);
+		assert.deepEqual(harness.activeToolUpdates.at(-1), ["read", "custom_tool"]);
 		assert.deepEqual(harness.appendedEntries.at(-1), {
 			customType: "pi-stoplight-state",
-			data: { mode: "red" },
+			data: { mode: "yellow" },
 		});
 		assert.deepEqual(harness.sentMessages, []);
 	});
@@ -275,11 +288,11 @@ describe("stoplight extension", () => {
 		assert.deepEqual(harness.sentMessages, []);
 		assert.deepEqual(result.message, {
 			customType: "pi-stoplight",
-			content: getModeChangeMessage("yellow", "green"),
+			content: getModeChangeMessage("green", "red"),
 			display: true,
-			details: { from: "yellow", to: "green" },
+			details: { from: "green", to: "red" },
 		});
-		assert.match(result.systemPrompt, /STOPLIGHT: GREEN/);
+		assert.match(result.systemPrompt, /STOPLIGHT: RED/);
 
 		const nextResult = (await harness.emit("before_agent_start", {
 			systemPrompt: "Base prompt",
@@ -294,6 +307,7 @@ describe("stoplight extension", () => {
 		harness.setTools(["read", "bash", "edit", "write", "late_tool"]);
 
 		await harness.pressShortcut();
+		await harness.pressShortcut();
 
 		assert.deepEqual(harness.activeToolUpdates.at(-1), [
 			"read",
@@ -307,6 +321,7 @@ describe("stoplight extension", () => {
 	it("reapplies the tool policy and appends the mode to the system prompt", async () => {
 		const harness = createHarness();
 		await harness.emit("session_start");
+		await harness.pressShortcut();
 		harness.setTools(["read", "bash", "late_tool"]);
 
 		const result = (await harness.emit("before_agent_start", {
@@ -321,9 +336,13 @@ describe("stoplight extension", () => {
 	it("blocks stale calls that violate yellow or red mode", async () => {
 		const harness = createHarness();
 		await harness.emit("session_start");
+		await harness.pressShortcut();
 
 		const yellowBlocked = await harness.emit("tool_call", { toolName: "bash" });
 		const yellowAllowed = await harness.emit("tool_call", { toolName: "read" });
+		const subagentBlocked = await harness.emit("tool_call", {
+			toolName: "subagent",
+		});
 		await harness.pressShortcut();
 		const redBlocked = await harness.emit("tool_call", { toolName: "read" });
 
@@ -332,6 +351,10 @@ describe("stoplight extension", () => {
 			reason: "🟡 Yellow stoplight mode blocks the bash tool.",
 		});
 		assert.equal(yellowAllowed, undefined);
+		assert.deepEqual(subagentBlocked, {
+			block: true,
+			reason: "🟡 Yellow stoplight mode blocks the subagent tool.",
+		});
 		assert.deepEqual(redBlocked, {
 			block: true,
 			reason: "🔴 Red stoplight mode blocks the read tool.",

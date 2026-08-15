@@ -9,7 +9,7 @@ export interface StoplightModeDefinition {
 	systemPrompt: string;
 }
 
-export const DEFAULT_MODE: StoplightMode = "yellow";
+export const DEFAULT_MODE: StoplightMode = "green";
 
 export const MODE_DEFINITIONS: Readonly<
 	Record<StoplightMode, StoplightModeDefinition>
@@ -29,7 +29,7 @@ export const MODE_DEFINITIONS: Readonly<
 		statusText: "🟡 Yellow: read only",
 		systemPrompt: [
 			"[PI STOPLIGHT: YELLOW]",
-			"Read-only/planning/research mode is active. You may read files, grep, & websearch, but not make any changes.",
+			"Read-only/planning/research mode is active. You may read files, grep, & websearch, but not make any changes. The subagent tool is also disabled — subagents cannot be spawned in this mode.",
 		].join("\n"),
 	},
 	red: {
@@ -43,7 +43,7 @@ export const MODE_DEFINITIONS: Readonly<
 	},
 };
 
-const YELLOW_DISABLED_TOOLS = new Set(["edit", "write", "bash"]);
+const YELLOW_DISABLED_TOOLS = new Set(["edit", "write", "bash", "subagent"]);
 
 export function isStoplightMode(value: unknown): value is StoplightMode {
 	return (
@@ -91,7 +91,7 @@ export function getModeChangeMessage(
 	if (to === "green") {
 		policy = "all tools enabled";
 	} else if (to === "yellow") {
-		policy = "plan/research mode - no write, edit, or bash";
+		policy = "plan/research mode - no write, edit, bash, or subagent";
 	}
 
 	return `${next.emoji} Stoplight changed from ${MODE_DEFINITIONS[from].label} to ${next.label}: ${policy}.`;
