@@ -93,6 +93,13 @@ export default function stoplightExtension(pi: ExtensionAPI): void {
 		},
 	});
 
+	pi.registerCommand("stoplight", {
+		description: "Cycle the stoplight mode (green → yellow → red)",
+		handler: async (_args, ctx) => {
+			setMode(nextMode(mode), ctx, { announce: true, persist: true });
+		},
+	});
+
 	pi.on("session_start", async (_event, ctx) => {
 		restoreFromBranch(ctx);
 	});

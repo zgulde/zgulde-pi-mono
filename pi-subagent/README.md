@@ -7,6 +7,9 @@ so its conversation — tool calls, thinking, intermediate results — never
 pollutes the parent agent's context. The parent LLM calls it like any other
 tool and receives back only the subagent's final answer.
 
+Under pi-web (Next.js server), the host must have `pi` on its `PATH`; subagent
+spawns fall back to invoking the `pi` command directly.
+
 ## Install
 
 ```bash

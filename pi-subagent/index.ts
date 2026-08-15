@@ -280,7 +280,20 @@ async function writePromptToTempFile(
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
 	const currentScript = process.argv[1];
 	const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");
-	if (currentScript && !isBunVirtualScript && fs.existsSync(currentScript)) {
+	// Under pi-web (Next.js server), process.argv[1] is Next's own bin, not the
+	// pi CLI — spawning `node <that>` would boot a server, not a pi session.
+	// Only take the execPath+script path when the basename looks like a pi CLI
+	// entry (pi, pi.js, pi-mcp, ...; cli.* too — the pi bin target, which
+	// argv[1] resolves to on Windows shims / direct `node dist/cli.js`).
+	const isPiCliEntry = /^(pi(-[a-z0-9_-]+)?|cli)(\.(js|mjs|cjs))?$/i.test(
+		path.basename(currentScript ?? ""),
+	);
+	if (
+		currentScript &&
+		!isBunVirtualScript &&
+		fs.existsSync(currentScript) &&
+		isPiCliEntry
+	) {
 		return { command: process.execPath, args: [currentScript, ...args] };
 	}
 

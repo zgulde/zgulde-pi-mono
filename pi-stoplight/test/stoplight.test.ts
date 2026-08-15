@@ -21,6 +21,7 @@ type RuntimeHandler = (
 	ctx: ExtensionContext,
 ) => unknown;
 type ShortcutHandler = (ctx: ExtensionContext) => unknown;
+type CommandHandler = (args: string | undefined, ctx: ExtensionContext) => unknown;
 
 interface CustomEntryData {
 	mode?: unknown;
@@ -53,6 +54,7 @@ function createHarness(
 	let branch = options.branch ?? [];
 	let tools = options.tools ?? ["read", "bash", "edit", "write", "custom_tool"];
 	let shortcutHandler: ShortcutHandler | undefined;
+	let commandHandler: CommandHandler | undefined;
 
 	const pi = {
 		appendEntry(customType: string, data: unknown) {
@@ -63,6 +65,9 @@ function createHarness(
 		},
 		on(eventName: string, handler: unknown) {
 			handlers.set(eventName, handler);
+		},
+		registerCommand(_name: string, options: { handler: CommandHandler }) {
+			commandHandler = options.handler;
 		},
 		registerShortcut(_key: string, options: { handler: ShortcutHandler }) {
 			shortcutHandler = options.handler;
@@ -110,12 +115,21 @@ function createHarness(
 		return shortcutHandler(ctx);
 	}
 
+	async function runCommand() {
+		assert.ok(
+			commandHandler,
+			"Expected the /stoplight command to be registered",
+		);
+		return commandHandler(undefined, ctx);
+	}
+
 	return {
 		activeToolUpdates,
 		appendedEntries,
 		ctx,
 		emit,
 		pressShortcut,
+		runCommand,
 		sentMessages,
 		setBranch(nextBranch: BranchEntry[]) {
 			branch = nextBranch;
@@ -263,12 +277,32 @@ describe("stoplight extension", () => {
 
 		await harness.pressShortcut();
 
-		assert.deepEqual(harness.activeToolUpdates.at(-1), ["read", "custom_tool"]);
+		assert.deepEqual(harness.activeToolUpdates.at(-1), [
+			"read",
+			"custom_tool",
+		]);
 		assert.deepEqual(harness.appendedEntries.at(-1), {
 			customType: "pi-stoplight-state",
 			data: { mode: "yellow" },
 		});
 		assert.deepEqual(harness.sentMessages, []);
+	});
+
+	it("cycles and persists via the /stoplight command", async () => {
+		const harness = createHarness();
+		await harness.emit("session_start");
+
+		await harness.runCommand();
+
+		assert.deepEqual(harness.activeToolUpdates.at(-1), [
+			"read",
+			"custom_tool",
+		]);
+		assert.match(harness.statuses.at(-1)?.text ?? "", /Yellow: read only/);
+		assert.deepEqual(harness.appendedEntries.at(-1), {
+			customType: "pi-stoplight-state",
+			data: { mode: "yellow" },
+		});
 	});
 
 	it("reports the mode before queued changes and the final mode", async () => {
