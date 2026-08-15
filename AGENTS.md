@@ -132,3 +132,12 @@ pi install ./pi-tok-per-sec
 - Per package: `npm run check -w pi-<name>`, `npm run typecheck -w pi-<name>`
 
 Run `make check` before committing.
+
+## Delegation & Subagents
+
+Prefer to delegate work (e.g. web research, code base exploration, etc) to
+sub-agents so you don't pollute your context window. Provide sub-agents with
+explicit and scoped instructions. Run subagents in parallel where it makes
+sense.
+
+
