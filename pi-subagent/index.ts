@@ -35,6 +35,9 @@ import {
 	type AgentConfig,
 	type AgentScope,
 	discoverAgents,
+	formatAgentList,
+	resolveScopedAgentName,
+	unknownAgentMessage,
 } from "./src/agents.ts";
 
 const MAX_PARALLEL_TASKS = 8;
@@ -335,7 +338,7 @@ async function runSingleAgent(
 			task,
 			exitCode: 1,
 			messages: [],
-			stderr: `Unknown agent: "${agentName}". Available agents: ${available}.`,
+			stderr: unknownAgentMessage(agentName, agents),
 			usage: {
 				input: 0,
 				output: 0,
@@ -560,17 +563,52 @@ const SubagentParams = Type.Object({
 	),
 });
 
+/**
+ * Base tool description without the agent roster; `prepareLoadout` appends the
+ * live list of available agents so the model never has to guess a name.
+ */
+function baseToolDescription(): string {
+	return [
+		"Delegate tasks to specialized subagents with isolated context.",
+		"Modes: single (agent + task), parallel (tasks array), chain (sequential with {previous} placeholder).",
+		`Agents are .md files in ${path.join(getAgentDir(), "agents")} (user scope) or ${CONFIG_DIR_NAME}/agents (project scope, opt-in via agentScope: "both").`,
+		'Agent names are plain names (e.g. "worker") — never scope-prefixed like "user:worker".',
+	].join(" ");
+}
+
+function formatAgentRoster(cwd: string): string {
+	try {
+		const { agents } = discoverAgents(cwd, "both");
+		if (agents.length === 0)
+			return "Available agents: none (create .md files in the agents directory).";
+		const { text, remaining } = formatAgentList(agents, 12);
+		const suffix = remaining > 0 ? ` (+${remaining} more)` : "";
+		return `Available agents: ${text}${suffix}.`;
+	} catch {
+		return "";
+	}
+}
+
 export default function (pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "subagent",
 		label: "Subagent",
-		description: [
-			"Delegate tasks to specialized subagents with isolated context.",
-			"Modes: single (agent + task), parallel (tasks array), chain (sequential with {previous} placeholder).",
-			`Default agent scope is "user" (from ${path.join(getAgentDir(), "agents")}).`,
-			`To enable project-local agents in ${CONFIG_DIR_NAME}/agents, set agentScope: "both" (or "project").`,
-		].join(" "),
+		description: baseToolDescription(),
 		parameters: SubagentParams,
+
+		// Rewrite the model-facing description with the live agent roster each
+		// time the active tool set changes, so names come from actual agent
+		// frontmatter instead of an error message after a failed call.
+		prepareLoadout(loadout) {
+			if (!loadout.declared.some((t) => t.name === "subagent")) return undefined;
+			const roster = formatAgentRoster(process.cwd());
+			if (!roster) return undefined;
+			return {
+				descriptions: {
+					subagent: `${baseToolDescription()} ${roster}`,
+				},
+			};
+		},
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
 			const agentScope: AgentScope = params.agentScope ?? "user";
@@ -584,7 +622,13 @@ export default function (pi: ExtensionAPI) {
 
 			const hasChain = (params.chain?.length ?? 0) > 0;
 			const hasTasks = (params.tasks?.length ?? 0) > 0;
-			const hasSingle = Boolean(params.agent && params.task);
+
+			// Accept scope-prefixed names like "user:worker" by stripping the scope
+			// when the suffix matches a real agent; leave everything else as-is so
+			// the unknown-agent error can suggest the intended name.
+			const resolveName = (raw: string) => resolveScopedAgentName(raw, agents) ?? raw;
+			const singleAgent = params.agent ? resolveName(params.agent) : undefined;
+			const hasSingle = Boolean(singleAgent && params.task);
 			const modeCount = Number(hasChain) + Number(hasTasks) + Number(hasSingle);
 
 			const makeDetails =
@@ -617,10 +661,10 @@ export default function (pi: ExtensionAPI) {
 			) {
 				const requestedAgentNames = new Set<string>();
 				if (params.chain)
-					for (const step of params.chain) requestedAgentNames.add(step.agent);
+					for (const step of params.chain) requestedAgentNames.add(resolveName(step.agent));
 				if (params.tasks)
-					for (const t of params.tasks) requestedAgentNames.add(t.agent);
-				if (params.agent) requestedAgentNames.add(params.agent);
+					for (const t of params.tasks) requestedAgentNames.add(resolveName(t.agent));
+				if (singleAgent) requestedAgentNames.add(singleAgent);
 
 				const projectAgentsRequested = Array.from(requestedAgentNames)
 					.map((name) => agents.find((a) => a.name === name))
@@ -672,7 +716,7 @@ export default function (pi: ExtensionAPI) {
 						ctx.cwd,
 						dispatchDefaults,
 						agents,
-						step.agent,
+						resolveName(step.agent),
 						taskWithContext,
 						step.cwd,
 						i + 1,
@@ -770,7 +814,7 @@ export default function (pi: ExtensionAPI) {
 							ctx.cwd,
 							dispatchDefaults,
 							agents,
-							t.agent,
+							resolveName(t.agent),
 							t.task,
 							t.cwd,
 							undefined,
@@ -809,12 +853,12 @@ export default function (pi: ExtensionAPI) {
 				};
 			}
 
-			if (params.agent && params.task) {
+			if (singleAgent && params.task) {
 				const result = await runSingleAgent(
 					ctx.cwd,
 					dispatchDefaults,
 					agents,
-					params.agent,
+					singleAgent,
 					params.task,
 					params.cwd,
 					undefined,

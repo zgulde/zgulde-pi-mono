@@ -146,7 +146,10 @@ export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryRe
 	return { agents: Array.from(agentMap.values()), projectAgentsDir };
 }
 
-export function formatAgentList(agents: AgentConfig[], maxItems: number): { text: string; remaining: number } {
+export function formatAgentList(
+	agents: AgentConfig[],
+	maxItems: number,
+): { text: string; remaining: number } {
 	if (agents.length === 0) return { text: "none", remaining: 0 };
 	const listed = agents.slice(0, maxItems);
 	const remaining = agents.length - listed.length;
@@ -154,4 +157,91 @@ export function formatAgentList(agents: AgentConfig[], maxItems: number): { text
 		text: listed.map((a) => `${a.name} (${a.source}): ${a.description}`).join("; "),
 		remaining,
 	};
+}
+
+function levenshtein(a: string, b: string): number {
+	const dp = Array.from({ length: b.length + 1 }, (_, i) => i);
+	for (let i = 1; i <= a.length; i++) {
+		let prev = dp[0];
+		dp[0] = i;
+		for (let j = 1; j <= b.length; j++) {
+			const tmp = dp[j];
+			dp[j] = Math.min(
+				dp[j] + 1,
+				dp[j - 1] + 1,
+				prev + (a[i - 1].toLowerCase() === b[j - 1].toLowerCase() ? 0 : 1),
+			);
+			prev = tmp;
+		}
+	}
+	return dp[b.length];
+}
+
+/**
+ * Suggest agent names similar to the given (unknown) name: case-insensitive
+ * prefix/substring matches plus edit-distance matches, capped at 3.
+ */
+export function suggestSimilarAgents(
+	name: string,
+	agents: AgentConfig[],
+	max = 3,
+): string[] {
+	const lower = name.toLowerCase();
+	const scored = agents
+		.map((a) => {
+			const target = a.name.toLowerCase();
+			let score: number;
+			if (target === lower) score = 0;
+			else if (target.startsWith(lower) || lower.startsWith(target)) score = 1;
+			else if (target.includes(lower) || lower.includes(target)) score = 2;
+			else score = levenshtein(lower, target);
+			return { name: a.name, score };
+		})
+		// Ignore suggestions worse than a couple of edits; longer names get a
+		// little more slack so e.g. "reviewer" vs "code-reviewer" still matches.
+		.filter((s) => s.score <= Math.max(2, Math.floor(name.length / 4)))
+		.sort((a, b) => a.score - b.score)
+		.slice(0, max);
+	return scored.map((s) => s.name);
+}
+
+/**
+ * Resolve an agent name that may carry a scope prefix like "user:worker".
+ * Scopes are directories, not part of the agent name, so models sometimes
+ * pattern-match the scope docs into "scope:name" input. Accept it when the
+ * suffix matches exactly; return undefined otherwise (caller falls through to
+ * the unknown-agent error).
+ */
+export function resolveScopedAgentName(
+	raw: string,
+	agents: AgentConfig[],
+): string | undefined {
+	if (agents.some((a) => a.name === raw)) return raw;
+	const colon = raw.indexOf(":");
+	if (colon <= 0) return undefined;
+	const scope = raw.slice(0, colon);
+	if (scope !== "user" && scope !== "project") return undefined;
+	const name = raw.slice(colon + 1);
+	return agents.some((a) => a.name === name) ? name : undefined;
+}
+
+/**
+ * Build the unknown-agent error message, including close-match suggestions
+ * and a hint when the input looks like a scope-qualified name.
+ */
+export function unknownAgentMessage(
+	name: string,
+	agents: AgentConfig[],
+): string {
+	const available =
+		agents.map((a) => `${a.name} (${a.source})`).join(", ") || "none";
+	const suggestions = suggestSimilarAgents(name, agents);
+	const lines = [`Unknown agent: "${name}". Available agents: ${available}.`];
+	if (suggestions.length > 0)
+		lines.push(`Did you mean: ${suggestions.map((s) => `"${s}"`).join(", ")}?`);
+	if (name.includes(":"))
+		lines.push(
+			'Note: "user" and "project" are agent directories (scopes), not part of the agent name — use the plain name, e.g. agent: "worker".',
+		);
+	return lines.join(" ");
 }
