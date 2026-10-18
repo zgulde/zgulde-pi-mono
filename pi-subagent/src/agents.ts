@@ -11,6 +11,8 @@ export type AgentScope = "user" | "project" | "both";
 export interface AgentConfig {
 	name: string;
 	description: string;
+	/** Optional author-curated one-liner for compact roster listings. */
+	summary?: string;
 	tools?: string[];
 	model?: string;
 	systemPrompt: string;
@@ -34,6 +36,7 @@ export interface AgentDiscoveryResult {
 type AgentFrontmatter = {
 	name?: unknown;
 	description?: unknown;
+	summary?: unknown;
 	tools?: unknown;
 	model?: unknown;
 };
@@ -94,6 +97,7 @@ function loadAgentsFromDir(dir: string, source: "user" | "project"): AgentConfig
 		agents.push({
 			name: frontmatter.name,
 			description: frontmatter.description,
+			summary: typeof frontmatter.summary === "string" ? frontmatter.summary : undefined,
 			tools: parseToolList(frontmatter.tools),
 			model: typeof frontmatter.model === "string" ? frontmatter.model : undefined,
 			systemPrompt: body,
@@ -146,6 +150,24 @@ export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryRe
 	return { agents: Array.from(agentMap.values()), projectAgentsDir };
 }
 
+/**
+ * One-line roster entry for an agent: the curated `summary` frontmatter field
+ * if present, else the first sentence of `description`, truncated to `max`
+ * characters. The roster exists to prevent name-guessing, not to sell the
+ * agent — keep it cheap.
+ */
+export function compactAgentDescription(agent: AgentConfig, max = 90): string {
+	const text = (agent.summary ?? agent.description).trim();
+	const firstSentence = text.split(/(?<=[.!?])\s/, 1)[0] ?? text;
+	const trimmed = firstSentence.trim();
+	if (trimmed.length <= max) return trimmed;
+	return `${trimmed.slice(0, max - 1).trimEnd()}…`;
+}
+
+/**
+ * Compact single-line roster text: one entry per agent, each entry the agent
+ * name, source, and a one-line description (see `compactAgentDescription`).
+ */
 export function formatAgentList(
 	agents: AgentConfig[],
 	maxItems: number,
@@ -154,7 +176,9 @@ export function formatAgentList(
 	const listed = agents.slice(0, maxItems);
 	const remaining = agents.length - listed.length;
 	return {
-		text: listed.map((a) => `${a.name} (${a.source}): ${a.description}`).join("; "),
+		text: listed
+			.map((a) => `${a.name} (${a.source}): ${compactAgentDescription(a)}`)
+			.join("; "),
 		remaining,
 	};
 }

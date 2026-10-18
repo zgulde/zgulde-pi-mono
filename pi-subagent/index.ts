@@ -34,6 +34,7 @@ import { Type } from "typebox";
 import {
 	type AgentConfig,
 	type AgentScope,
+	compactAgentDescription,
 	discoverAgents,
 	formatAgentList,
 	resolveScopedAgentName,
@@ -534,7 +535,10 @@ const AgentScopeSchema = StringEnum(["user", "project", "both"] as const, {
 
 const SubagentParams = Type.Object({
 	agent: Type.Optional(
-		Type.String({ description: "Name of the agent to invoke (for single mode)" }),
+		Type.String({
+			description:
+				"Name of the agent to invoke (single mode; may be omitted when only one agent exists)",
+		}),
 	),
 	task: Type.Optional(
 		Type.String({ description: "Task to delegate (for single mode)" }),
@@ -564,12 +568,16 @@ const SubagentParams = Type.Object({
 });
 
 /**
- * Base tool description without the agent roster; `prepareLoadout` appends the
- * live list of available agents so the model never has to guess a name.
+ * Base tool description without the agent roster; `prepareLoadout` appends a
+ * live roster (with single-agent defaulting hints) so the model never has to
+ * guess a name.
  */
 function baseToolDescription(): string {
 	return [
-		"Delegate tasks to specialized subagents with isolated context.",
+		"Run a scoped task in an isolated child session with a disposable context window.",
+		"PREFER THIS over bash/read whenever a lookup requires >3 exploratory calls or reads >5k tokens to produce a small answer (e.g. mapping unfamiliar directories, inspecting large schemas/logs, bisecting test failures, or running parallel module checks).",
+		"DO NOT use for known file paths, quick targeted greps (<3 calls), or edits where you need the raw code in this session.",
+		"The subagent has ZERO session history: give a self-contained objective with exact paths, module names, etc., and the required return format.",
 		"Modes: single (agent + task), parallel (tasks array), chain (sequential with {previous} placeholder).",
 		`Agents are .md files in ${path.join(getAgentDir(), "agents")} (user scope) or ${CONFIG_DIR_NAME}/agents (project scope, opt-in via agentScope: "both").`,
 		'Agent names are plain names (e.g. "worker") — never scope-prefixed like "user:worker".',
@@ -581,6 +589,10 @@ function formatAgentRoster(cwd: string): string {
 		const { agents } = discoverAgents(cwd, "both");
 		if (agents.length === 0)
 			return "Available agents: none (create .md files in the agents directory).";
+		if (agents.length === 1) {
+			const a = agents[0];
+			return `The only available agent is "${a.name}" (${a.source}): ${compactAgentDescription(a)}. Omit "agent" in single mode to default to it.`;
+		}
 		const { text, remaining } = formatAgentList(agents, 12);
 		const suffix = remaining > 0 ? ` (+${remaining} more)` : "";
 		return `Available agents: ${text}${suffix}.`;
@@ -627,7 +639,12 @@ export default function (pi: ExtensionAPI) {
 			// when the suffix matches a real agent; leave everything else as-is so
 			// the unknown-agent error can suggest the intended name.
 			const resolveName = (raw: string) => resolveScopedAgentName(raw, agents) ?? raw;
-			const singleAgent = params.agent ? resolveName(params.agent) : undefined;
+			// Single-mode default: when exactly one agent exists, `task` alone is
+			// enough — the description advertises this, so honor it.
+			const soleAgent = agents.length === 1 ? agents[0].name : undefined;
+			const singleAgent = params.agent
+				? resolveName(params.agent)
+				: soleAgent;
 			const hasSingle = Boolean(singleAgent && params.task);
 			const modeCount = Number(hasChain) + Number(hasTasks) + Number(hasSingle);
 
