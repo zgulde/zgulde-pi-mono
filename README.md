@@ -10,8 +10,8 @@ A monorepo of [pi](https://github.com/earendil-works/pi) extensions:
   "Verbed for 26s · done 6:23 PM" transcript line
 
 Each extension is a pi package with its own `package.json` and a `pi.extensions`
-manifest pointing at a root `index.ts`, so all three install the same way and
-show up by package name in the agent.
+manifest pointing at a root `index.ts`, so each package installs the same way
+and shows up by package name in the agent.
 
 ## Install
 
@@ -32,6 +32,8 @@ Equivalent to:
 pi install ./pi-md-preview
 pi install ./pi-stoplight
 pi install ./pi-tok-per-sec
+pi install ./pi-subagent
+pi install ./pi-advisor
 pi install ./pi-turn-verb
 ```
 
