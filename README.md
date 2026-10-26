@@ -6,6 +6,8 @@ A monorepo of [pi](https://github.com/earendil-works/pi) extensions:
   in the browser (`/preview`)
 - **pi-stoplight** — three-state tool access control (`Shift+Tab` to cycle)
 - **pi-tok-per-sec** — output tokens/second in the status line
+- **pi-turn-verb** — Claude Code-style random-verb spinner plus an end-of-turn
+  "Verbed for 26s · done 6:23 PM" transcript line
 
 Each extension is a pi package with its own `package.json` and a `pi.extensions`
 manifest pointing at a root `index.ts`, so all three install the same way and
@@ -30,6 +32,7 @@ Equivalent to:
 pi install ./pi-md-preview
 pi install ./pi-stoplight
 pi install ./pi-tok-per-sec
+pi install ./pi-turn-verb
 ```
 
 Packages are added to `~/.pi/agent/settings.json` as local-path references (no

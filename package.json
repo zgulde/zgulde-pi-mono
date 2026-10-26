@@ -8,7 +8,7 @@
     "pi-*"
   ],
   "scripts": {
-    "install:pi": "pi install ./pi-md-preview && pi install ./pi-stoplight && pi install ./pi-tok-per-sec && pi install ./pi-subagent && pi install ./pi-advisor",
+    "install:pi": "pi install ./pi-md-preview && pi install ./pi-stoplight && pi install ./pi-tok-per-sec && pi install ./pi-subagent && pi install ./pi-advisor && pi install ./pi-turn-verb",
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test --workspaces --if-present"
   }

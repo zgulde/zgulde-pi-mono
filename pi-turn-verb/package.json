@@ -1,0 +1,20 @@
+{
+  "name": "pi-turn-verb",
+  "version": "1.0.0",
+  "description": "Claude Code-style random-verb working indicator plus an end-of-turn 'Verbed for 26s · done 6:23 PM' transcript line.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": ["pi-package"],
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": ["./index.ts"]
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
