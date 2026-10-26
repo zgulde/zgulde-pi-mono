@@ -12,6 +12,7 @@ Current packages:
 - `pi-md-preview` — `/preview` command that renders the latest assistant
   response as Markdown in the browser
 - `pi-stoplight` — three-state tool access control (`Shift+Tab` to cycle)
+- `pi-subagent` — delegate tasks to specialized subagents with isolated context
 - `pi-tok-per-sec` — output tokens/second in the status line
 
 ## Package structure convention
@@ -111,6 +112,7 @@ npm install
 pi install ./pi-md-preview
 pi install ./pi-stoplight
 pi install ./pi-tok-per-sec
+pi install ./pi-subagent
 ```
 
 `pi install` writes local-path references into `~/.pi/agent/settings.json`
@@ -128,7 +130,7 @@ pi install ./pi-tok-per-sec
 
 - `make check` — typecheck all packages and run tests
 - `make typecheck` — `tsc --noEmit` across all workspaces
-- `make test` — run test scripts (`pi-stoplight` has the only suite)
+- `make test` — run test scripts
 - Per package: `npm run check -w pi-<name>`, `npm run typecheck -w pi-<name>`
 
 Run `make check` before committing.

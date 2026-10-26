@@ -5,6 +5,8 @@ A monorepo of [pi](https://github.com/earendil-works/pi) extensions:
 - **pi-md-preview** — open the latest assistant response as rendered Markdown
   in the browser (`/preview`)
 - **pi-stoplight** — three-state tool access control (`Shift+Tab` to cycle)
+- **pi-subagent** — delegate tasks to specialized subagents with isolated
+  context
 - **pi-tok-per-sec** — output tokens/second in the status line
 - **pi-turn-verb** — Claude Code-style random-verb spinner plus an end-of-turn
   "Verbed for 26s · done 6:23 PM" transcript line
@@ -33,7 +35,6 @@ pi install ./pi-md-preview
 pi install ./pi-stoplight
 pi install ./pi-tok-per-sec
 pi install ./pi-subagent
-pi install ./pi-advisor
 pi install ./pi-turn-verb
 ```
 
