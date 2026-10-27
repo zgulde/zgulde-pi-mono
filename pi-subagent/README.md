@@ -10,6 +10,14 @@ tool and receives back only the subagent's final answer.
 Under pi-web (Next.js server), the host must have `pi` on its `PATH`; subagent
 spawns fall back to invoking the `pi` command directly.
 
+## No recursive subagents
+
+Subagents are leaf workers: they cannot spawn further subagents. Each spawned
+child process is launched with a `PI_IS_SUBAGENT` environment marker, and the
+extension refuses to register the `subagent` tool when that marker is present.
+The marker propagates to all descendants, so nesting is blocked at every
+depth and the model never even sees the tool in the child session.
+
 ## Install
 
 ```bash

@@ -13,6 +13,7 @@ Current packages:
   response as Markdown in the browser
 - `pi-stoplight` — three-state tool access control (`Shift+Tab` to cycle)
 - `pi-subagent` — delegate tasks to specialized subagents with isolated context
+  windows (subagents cannot recursively spawn further subagents)
 - `pi-tok-per-sec` — output tokens/second in the status line
 
 ## Package structure convention

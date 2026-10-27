@@ -417,6 +417,7 @@ async function runSingleAgent(
 				cwd: cwd ?? defaultCwd,
 				shell: false,
 				stdio: ["ignore", "pipe", "pipe"],
+				env: { ...process.env, [SUBAGENT_ENV_MARKER]: "1" },
 			});
 			let buffer = "";
 
@@ -601,7 +602,22 @@ function formatAgentRoster(cwd: string): string {
 	}
 }
 
+/**
+ * Environment marker set on child pi processes spawned by this extension.
+ * When present, the extension refuses to register the subagent tool in the
+ * child, preventing recursive subagent spawning (a subagent of a subagent).
+ * The marker propagates to all descendants, so nesting is blocked at every
+ * depth. If shallow nesting is ever desired, upgrade this to a depth counter.
+ */
+const SUBAGENT_ENV_MARKER = "PI_IS_SUBAGENT";
+
 export default function (pi: ExtensionAPI) {
+	if (process.env[SUBAGENT_ENV_MARKER]) {
+		// We are running inside a subagent-invoked pi process. Do not expose
+		// the subagent tool so delegation cannot recurse.
+		return;
+	}
+
 	pi.registerTool({
 		name: "subagent",
 		label: "Subagent",
